@@ -10,6 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url 'https://api.xposed.info/' } // 核心：加上这个源
     }
 }
 rootProject.name = "WeaiText"
