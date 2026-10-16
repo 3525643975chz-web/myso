@@ -1,12 +1,9 @@
 package com.asia.weaitext;
 
-import android.widget.TextView;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
-import java.io.File;
-import java.io.FileInputStream;
 
 public class MainHook implements IXposedHookLoadPackage {
     @Override
@@ -14,43 +11,49 @@ public class MainHook implements IXposedHookLoadPackage {
         // 只对微信生效
         if (!lpparam.packageName.equals("com.tencent.mm")) return;
 
-        XposedHelpers.findAndHookMethod(
-            TextView.class, "setText", CharSequence.class,
-            new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    CharSequence text = (CharSequence) param.args[0];
-                    if (text == null || text.length() == 0) return;
-                    
-                    String raw = text.toString();
-                    // 读取你在 WebUI 保存的配置文件，动态替换
-                    String modified = readConfigAndReplace(raw);
-                    
-                    if (!raw.equals(modified)) {
-                        param.args[0] = modified;
+        // 1. 拦截输入法（修改你打字时的输入框内容）
+        try {
+            XposedHelpers.findAndHookMethod(
+                "android.view.inputmethod.InputConnection",
+                lpparam.classLoader,
+                "commitText",
+                CharSequence.class,
+                int.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        CharSequence text = (CharSequence) param.args[0];
+                        if (text != null && text.length() > 0) {
+                            String modified = text.toString().replace("我", "本喵");
+                            param.args[0] = modified;
+                        }
                     }
                 }
-            }
-        );
-    }
-
-    private String readConfigAndReplace(String input) {
-        String result = input;
-        try {
-            // 直接读取你之前写好的 config.json
-            File file = new File("/data/adb/modules/WeaiText/config.json");
-            if (!file.exists()) return result;
-            FileInputStream fis = new FileInputStream(file);
-            byte[] bytes = new byte[(int) file.length()];
-            fis.read(bytes);
-            fis.close();
-            String json = new String(bytes, "UTF-8");
-            
-            // 简单粗暴的解析替换（如果在生产环境建议用 Gson 库）
-            result = result.replace("我", "本喵").replace("你", "杂鱼"); // 这里你也可以写从 json 解析的代码
-        } catch (Exception e) {
-            // 忽略错误，直接返回原文本，防止崩溃
+            );
+        } catch (Throwable t) {
+            // 忽略错误，绝对不让微信崩溃
         }
-        return result;
+
+        // 2. 拦截聊天气泡（修改发送后或收到的消息）
+        try {
+            XposedHelpers.findAndHookMethod(
+                "android.widget.TextView",
+                lpparam.classLoader,
+                "setText",
+                CharSequence.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        CharSequence text = (CharSequence) param.args[0];
+                        if (text != null && text.length() > 0) {
+                            String modified = text.toString().replace("我", "本喵");
+                            param.args[0] = modified;
+                        }
+                    }
+                }
+            );
+        } catch (Throwable t) {
+            // 忽略错误，绝对不让微信崩溃
+        }
     }
 }
