@@ -3,9 +3,14 @@ package com.asia.weaitext;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -22,32 +27,42 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 配置存放路径（App私有目录）
+        // 1. 隐藏原生标题栏（ActionBar）
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        
+        // 2. 将系统状态栏颜色改为粉色，和你的UI融为一体
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(Color.parseColor("#FFD1D9"));
+            // 状态栏图标设为深色（匹配浅色背景）
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            }
+        }
+
         configFile = new File(getFilesDir(), "weaitext_config.json");
 
-        // 动态创建 WebView，无需 XML 布局文件
+        // 3. 全屏 WebView
         webView = new WebView(this);
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setAllowFileAccess(true);
+        
+        // 允许通过 file:// 协议访问外部存储的图片（如果你以后想用本地头像的话）
+        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowUniversalAccessFromFileURLs(true);
 
-        // 注入 Android 桥接接口
         webView.addJavascriptInterface(new AndroidBridge(this), "AndroidBridge");
-
-        // 加载 assets 目录下的 index.html
         webView.loadUrl("file:///android_asset/index.html");
 
         setContentView(webView);
     }
 
-    // 提供给前端 JS 调用的原生方法集合
     public class AndroidBridge {
         private Context context;
-
-        public AndroidBridge(Context context) {
-            this.context = context;
-        }
+        public AndroidBridge(Context context) { this.context = context; }
 
         @JavascriptInterface
         public void saveConfig(String json) {
@@ -55,9 +70,7 @@ public class MainActivity extends Activity {
                 FileOutputStream fos = new FileOutputStream(configFile);
                 fos.write(json.getBytes());
                 fos.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            } catch (Exception e) { e.printStackTrace(); }
         }
 
         @JavascriptInterface
@@ -69,9 +82,7 @@ public class MainActivity extends Activity {
                 fis.read(bytes);
                 fis.close();
                 return new String(bytes);
-            } catch (Exception e) {
-                return "";
-            }
+            } catch (Exception e) { return ""; }
         }
 
         @JavascriptInterface
