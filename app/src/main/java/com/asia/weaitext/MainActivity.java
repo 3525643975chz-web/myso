@@ -27,15 +27,14 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // 1. 隐藏原生标题栏（ActionBar）
+        // 1. 隐藏原生标题栏
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         
-        // 2. 将系统状态栏颜色改为粉色，和你的UI融为一体
+        // 2. 将系统状态栏颜色改为粉色，全屏沉浸式体验
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.setStatusBarColor(Color.parseColor("#FFD1D9"));
-            // 状态栏图标设为深色（匹配浅色背景）
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
             }
@@ -49,10 +48,6 @@ public class MainActivity extends Activity {
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setAllowFileAccess(true);
-        
-        // 允许通过 file:// 协议访问外部存储的图片（如果你以后想用本地头像的话）
-        webSettings.setAllowFileAccessFromFileURLs(true);
-        webSettings.setAllowUniversalAccessFromFileURLs(true);
 
         webView.addJavascriptInterface(new AndroidBridge(this), "AndroidBridge");
         webView.loadUrl("file:///android_asset/index.html");
@@ -60,9 +55,13 @@ public class MainActivity extends Activity {
         setContentView(webView);
     }
 
+    // 提供给前端 JS 调用的原生方法集合
     public class AndroidBridge {
         private Context context;
-        public AndroidBridge(Context context) { this.context = context; }
+
+        public AndroidBridge(Context context) {
+            this.context = context;
+        }
 
         @JavascriptInterface
         public void saveConfig(String json) {
